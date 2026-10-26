@@ -1,0 +1,27 @@
+% AGORA: Grassroots Barter --- an experimental contract written by Nimrod Talmon with Claude, 2026-10-26, outside the owners' process.
+% Owner: Nimrod (experimental).  No paper.
+% Extends: GKK, Grassroots Keys and Knowledge, GSC's (programs/gsc).  It cites GKK:1 to GKK:3 whole and restates none.
+% Defines: market, keeper, member, item, shelf, wall.  An item is named by its maker, so each item is one of a kind.
+% Schemas: AGORA.glp beside this file.
+AGORA: Grassroots Barter
+Alice and Bob are persons.
+1. ■ Market.  Alice may open a market, of which they are the keeper and first member.
+2. ■ Joining.  Alice, the keeper of a market, may admit Bob, whom they know, by an act of both.
+3. ■ Listing.  Alice may add to their shelf a new item, one of a kind, which they own.
+4. ■ Offering.  Bob, a member of a market, may post an item they own to the market's wall; Alice, its keeper, delivers it to every member, who thereby knows Bob.
+5. ■ Wanting.  Bob, a member of a market, may post to the wall something they are looking for; Alice, its keeper, delivers it to every member, who thereby knows Bob.
+6. ■ Swap.  Alice and Bob may jointly decide to exchange an item each owns, if Alice knows Bob.
+7. ■ Withdrawal.  Bob may withdraw a post of theirs; Alice, the keeper, removes it from the wall of every member it was delivered to.
+Pragmas
+Shelf: the items Alice owns.
+Offers: the wall offers Alice sees.
+Wants: the wall wants Alice sees.
+Market: Alice [Open] <market>
+Joining: Alice [Admit] <person>
+  Bob: Alice invites you to their market.
+Listing: Alice [List] <item>
+Offering: Bob [Offer] <item>
+Wanting: Bob [Want] <description>
+Swap: Alice [Swap] <item given> <item wanted>
+  Bob: Alice offers to swap with you.
+Withdrawal: Bob [Withdraw] <post>

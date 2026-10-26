@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AGORA — grassroots barter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3efe6; --ink:#1f1d1a; --muted:#6f685d; --line:#ddd5c6; --card:#fffdf8;
+  --accent:#b4532a; --accent-soft:#f6e3d8; --ok:#3d7a4f; --ok-soft:#e1efe4; --warn:#9a6a00; --warn-soft:#fbefd0;
+  --alice:#b4532a; --bob:#2f6690; --carol:#6a4c93; --dave:#3d7a4f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+h1{font-family:Fraunces,serif;font-size:24px;margin:0;letter-spacing:.2px}
+header .sub{color:var(--muted)}
+header .sp{flex:1}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 10px}
+button:hover:not(:disabled){border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.yes{background:var(--ok);color:#fff;border-color:var(--ok)}
+button.no{background:#fff}
+select,input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;min-width:0}
+#who{display:none;gap:6px;padding:10px 16px}
+#who button.on{background:var(--ink);color:#fff}
+main{display:grid;grid-template-columns:repeat(4,minmax(260px,1fr));gap:14px;padding:16px}
+.phone{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;min-height:600px}
+.top{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.av{width:30px;height:30px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:600}
+.name{font-weight:600;font-size:15px;text-transform:capitalize}
+.state{color:var(--muted);font-size:12px}
+.sec{padding:10px 14px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ask{background:var(--warn-soft);border:1px solid #ecd9a6;border-radius:12px;padding:10px;margin-bottom:8px}
+.ask .btns{display:flex;gap:6px;margin-top:8px}
+.pend{background:var(--accent-soft);border-radius:10px;padding:6px 8px;margin-bottom:6px;font-size:13px}
+.note{background:#fbe1dd;border-radius:10px;padding:6px 8px;margin-bottom:6px;font-size:13px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.tabs button{padding:4px 8px;font-size:12px;border-radius:999px}
+.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+ul.list{list-style:none;margin:0;padding:0}
+ul.list li{padding:5px 0;border-bottom:1px dashed var(--line);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+ul.list li:last-child{border-bottom:0}
+.chip{display:inline-block;padding:1px 7px;border-radius:999px;font-size:12px;background:#eee8dc}
+.empty{color:var(--muted);font-style:italic;font-size:13px}
+.acts{display:flex;flex-direction:column;gap:7px}
+.act{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.act > button{min-width:78px}
+.act select,.act input{flex:1}
+.busy{color:var(--muted);font-size:12px;margin-bottom:6px}
+.facts{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);white-space:pre-wrap;word-break:break-word}
+details summary{cursor:pointer;color:var(--muted);font-size:12px}
+#net{margin:0 16px 20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+#netlog{font-family:ui-monospace,Menlo,monospace;font-size:11px;max-height:220px;overflow:auto;white-space:pre}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+@media (max-width: 1100px){ main{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width: 700px){
+  main{grid-template-columns:1fr;padding:0 12px 12px}
+  #who{display:flex}
+  .phone{display:none} .phone.sel{display:flex}
+  header{padding:12px 16px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>AGORA</h1>
+  <span class="sub">grassroots barter · compiled from the contract by the GLP cascade</span>
+  <span class="sp"></span>
+  <span id="status" class="state"><span class="dot"></span>connecting…</span>
+  <button id="reset" title="Start a fresh world">Reset world</button>
+</header>
+<div id="who"></div>
+<main id="phones"></main>
+<section id="net">
+  <details><summary>Network: what passed between the agents (latest 60)</summary><div id="netlog"></div></details>
+</section>
+<script>
+const PERSONS=['alice','bob','carol','dave'];
+let ST=null, VER=-1, SEL='alice';
+const KEY=new URLSearchParams(location.search).get('key')||'';
+const api=(path)=>path+(path.includes('?')?'&':'?')+'key='+encodeURIComponent(KEY);
+const ui={}; PERSONS.forEach(p=>ui[p]={tab:'Shelf'});
+
+// ---- terms ----
+const S=(f,...a)=>({f,a});
+const sp=(t,who)=>S('speech',S('utterance',t),who);
+const isS=(t,f)=>t&&typeof t==='object'&&!Array.isArray(t)&&t.f===f;
+function show(t){
+  if(Array.isArray(t)) return '['+t.map(show).join(', ')+']';
+  if(t&&typeof t==='object'&&'f' in t){
+    if(t.f==='speech'&&isS(t.a[0],'utterance')) return `“${t.a[0].a[0]}” (${t.a[1]})`;
+    if(t.f==='dot'&&isS(t.a[0],'community')) return show(t.a[1]);
+    return t.f+'('+t.a.map(show).join(', ')+')';
+  }
+  return String(t);
+}
+const txt=t=>isS(t,'speech')&&isS(t.a[0],'utterance')?t.a[0].a[0]:show(t);
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const key=t=>JSON.stringify(t);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---- reading a person's screen ----
+function screen(p){
+  const cs=ST.persons[p]||{};
+  let view=null, notes=[], menu=null, asks=[];
+  for(const [id,v] of Object.entries(cs)){
+    if(isS(v,'output')){
+      for(const x of v.a[0]){ if(isS(x,'view')){view=x;notes=[]} else if(x&&x.f&&x.f!=='pending') notes.push(x) }
+    } else if(isS(v,'menu_w')){ const m=v.a[0]; if(!used[p+':'+id]) menu={id:+id,path:m.a[2].a[0]} }
+    else if(isS(v,'approval_w')){ const ap=v.a[0]; if(!used[p+':'+id]) asks.push({id:+id,path:ap.a[ap.a.length-1].a[0],at:ap.a[0],words:ap.a.length>2?ap.a[1]:null}) }
+  }
+  const atoms=view?view.a[0]:[], known=view?view.a[1]:[], pending=view?view.a[2]:[];
+  const by=f=>atoms.filter(a=>a===f||isS(a,f));
+  const markets=by('member').map(a=>{const c=a.a[0];return {keeper:c.a[0].a[0],name:c.a[1]}});
+  return {view,notes,menu,asks,atoms,known,pending,by,markets,identity:atoms.includes('identity')};
+}
+
+// ---- acting ----
+// A request form or a question is used once: the page waits for the agent to
+// draw the next one rather than grant on one already answered.
+const used={};
+async function act(p,id,path,value){
+  used[p+':'+id]=true; render();
+  await fetch(api('/api/act'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({person:p,id,path,value})});
+}
+function propose(p,prop){ const s=screen(p); if(!s.menu) return; act(p,s.menu.id,s.menu.path,S('propose',prop)); }
+
+function words(ws){
+  if(!Array.isArray(ws)) return '';
+  return ws.map(w=>{
+    if(isS(w,'text')) return esc(w.a[0]);
+    if(isS(w,'person')) return '<b>'+esc(cap(w.a[0]))+'</b>';
+    if(isS(w,'named')) return ' · '+esc(w.a[0])+': <b>'+esc(cap(w.a[1]))+'</b>';
+    if(isS(w,'valued')) return ' · '+esc(w.a[0])+': '+esc(w.a[1]);
+    return esc(show(w));
+  }).join('');
+}
+function attemptText(at){
+  let c=at; if(isS(at,'attempt')) c=at.a[3]; else if(isS(at,'hello')) c=at.a[1];
+  if(!c||!c.f) return show(at);
+  const a=c.a;
+  switch(c.f){
+    case 'acquaint': return `${cap(a[0])} wishes that you know each other.`;
+    case 'admit': return `${cap(a[0])} invites you to the market ${txt(a[2])}.`;
+    case 'swap': return `${cap(a[0])} offers ${txt(a[2])} for your ${txt(a[3])}.`;
+    case 'introduce': return `${cap(a[0])} introduces ${cap(a[2])} to you.`;
+  }
+  return show(c);
+}
+function pendText(c){
+  const a=c.a||[];
+  switch(c.f){
+    case 'establish': return 'Setting up your identity…';
+    case 'acquaint': return `Waiting for ${cap(a[1]===SELF?a[0]:a[1])} to agree to meet`;
+    case 'admit': return `Admitting ${cap(a[1])}…`;
+    case 'swap': return `Swap: ${txt(a[2])} ⇄ ${txt(a[3])} — waiting`;
+    default: return cap(c.f)+'…';
+  }
+}
+let SELF='';
+function detailText(at){
+  let c=at; if(isS(at,'attempt')) c=at.a[3]; else if(isS(at,'hello')) c=at.a[1];
+  if(isS(c,'swap')) return `You give ${txt(c.a[3])}, you get ${txt(c.a[2])}.`;
+  if(isS(c,'admit')) return `Market: ${txt(c.a[2])}`;
+  return '';
+}
+
+// ---- rendering ----
+function render(){
+  if(!ST) return;
+  const fe=document.activeElement, fid=fe&&fe.id&&fe.tagName==='INPUT'?fe.id:null, caret=fid?fe.selectionStart:null;
+  document.getElementById('status').innerHTML='<span class="dot"></span>'+ST.status;
+  const host=document.getElementById('phones');
+  const open=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.phone');
+  host.innerHTML='';
+  for(const p of PERSONS){ SELF=p; host.appendChild(phone(p)); }
+  document.getElementById('who').innerHTML=PERSONS.map(p=>`<button class="${p===SEL?'on':''}" onclick="SEL='${p}';render()">${cap(p)}</button>`).join('');
+  restoreDrafts();
+  if(fid){const e=document.getElementById(fid); if(e){e.focus(); try{e.setSelectionRange(caret,caret)}catch(_){}}}
+  document.getElementById('netlog').textContent=(ST.net||[]).map(show).join('\n')||'—';
+}
+
+function sel(id,opts,ph){ return `<select id="${id}">${opts.length?'':`<option value="">${ph}</option>`}${opts.map(o=>`<option value='${esc(key(o.v))}'>${esc(o.l)}</option>`).join('')}</select>` }
+const val=id=>{const e=document.getElementById(id);return e&&e.value?JSON.parse(e.value):null};
+const tval=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+
+function phone(p){
+  const s=screen(p);
+  const d=document.createElement('div'); d.className='phone'+(p===SEL?' sel':'');
+  const others=PERSONS.filter(q=>q!==p);
+  const knows=s.by('knows').map(a=>a.a[0]).filter(q=>q!==p);
+  const items=s.by('item').map(a=>a.a[0]);
+  const wallOffers=s.by('wall_offer'), wallWants=s.by('wall_want');
+  const m=s.markets[0];
+  const busy=!s.menu;
+  let h=`<div class="top"><div class="av" style="background:var(--${p})">${p[0].toUpperCase()}</div>
+    <div><div class="name">${p}</div><div class="state">${s.identity?(m?`member of “${esc(txt(m.name))}”${m.keeper===p?' · keeper':''}`:'no market yet'):'no identity yet'}</div></div></div>`;
+
+  if(s.asks.length||s.notes.length||s.pending.length){
+    h+=`<div class="sec"><h3>Now</h3>`;
+    for(const a of s.asks){
+      const w=a.words?words(a.words):'';
+      const detail=detailText(a.at);
+      h+=`<div class="ask">${w||esc(attemptText(a.at))}${w&&detail?`<div class="state" style="margin-top:4px">${esc(detail)}</div>`:''}<div class="btns">
+        <button class="yes" data-ans="yes" data-id="${a.id}" data-path='${key(a.path)}'>Yes</button>
+        <button class="no" data-ans="no" data-id="${a.id}" data-path='${key(a.path)}'>No</button></div></div>`;
+    }
+    for(const c of s.pending) h+=`<div class="pend">${esc(pendText(c))}</div>`;
+    for(const n of s.notes) h+=`<div class="note">${isS(n,'refused')?`Not done: ${esc(show(n.a[0]))} — ${esc(show(n.a[2]))}${n.a[1]&&n.a[1]!==p?' (by '+esc(cap(String(n.a[1])))+')':''}`:esc(show(n))}</div>`;
+    h+=`</div>`;
+  }
+
+  // tabs
+  const tabs=['Shelf','Offers','Wants','Contacts'];
+  const t=ui[p].tab;
+  h+=`<div class="sec"><div class="tabs">${tabs.map(x=>`<button data-tab="${x}" class="${x===t?'on':''}">${x}</button>`).join('')}</div>`;
+  let rows=[];
+  if(t==='Shelf') rows=items.map(x=>`<li>${esc(txt(x))} <span class="chip">${x.a[1]===p?'made by you':'from '+cap(x.a[1])}</span></li>`);
+  if(t==='Offers') rows=wallOffers.map(a=>`<li>${esc(txt(a.a[0]))} <span class="chip">${a.a[1]===p?'yours':cap(a.a[1])}</span></li>`);
+  if(t==='Wants') rows=wallWants.map(a=>`<li>${esc(txt(a.a[0]))} <span class="chip">${a.a[1]===p?'yours':cap(a.a[1])}</span></li>`);
+  if(t==='Contacts') rows=knows.map(q=>`<li><span class="av" style="width:20px;height:20px;font-size:11px;background:var(--${q})">${q[0].toUpperCase()}</span>${cap(q)}</li>`);
+  h+= rows.length?`<ul class="list">${rows.join('')}</ul>`:`<div class="empty">nothing here yet</div>`;
+  h+=`</div>`;
+
+  // actions
+  h+=`<div class="sec"><h3>Act</h3>${busy?'<div class="busy">your agent is busy with a transaction…</div>':''}<div class="acts">`;
+  const B=(name,label,extra='')=>`<div class="act"><button data-act="${name}" ${busy?'disabled':''}>${label}</button>${extra}</div>`;
+  if(!s.identity){
+    h+=B('establish','Establish',`<span class="state">choose your key pair — the first act</span>`);
+  } else {
+    h+=B('acquaint','Meet',sel(`${p}-acq`,others.filter(q=>!knows.includes(q)).map(q=>({v:q,l:cap(q)})),'everyone met'));
+    if(!m) h+=B('open','Open',`<input id="${p}-open" placeholder="market name">`);
+    if(m&&m.keeper===p) h+=B('admit','Admit',sel(`${p}-adm`,knows.filter(q=>!s.by('listed').some(a=>a.a[0]===q)).map(q=>({v:q,l:cap(q)})),'admit someone you know'));
+    h+=B('list','List',`<input id="${p}-list" placeholder="new item, e.g. bike">`);
+    if(m&&m.keeper!==p){
+      h+=B('offer','Offer',sel(`${p}-off`,items.map(x=>({v:x,l:txt(x)})),'nothing to offer'));
+      h+=B('want','Want',`<input id="${p}-want" placeholder="something you look for">`);
+    }
+    const theirs=wallOffers.filter(a=>a.a[1]!==p&&knows.includes(a.a[1]));
+    h+=B('swap','Swap',sel(`${p}-give`,items.map(x=>({v:x,l:'give '+txt(x)})),'nothing to give')+sel(`${p}-get`,theirs.map(a=>({v:[a.a[1],a.a[0]],l:`for ${txt(a.a[0])} (${cap(a.a[1])})`})),'no offers seen'));
+    if(m&&m.keeper!==p){
+      const mine=[...wallOffers.filter(a=>a.a[1]===p).map(a=>({v:['offer',a.a[0]],l:'offer: '+txt(a.a[0])})),
+                  ...wallWants.filter(a=>a.a[1]===p).map(a=>({v:['want',a.a[0]],l:'want: '+txt(a.a[0])}))];
+      h+=B('withdraw','Withdraw',sel(`${p}-wd`,mine,'no posts'));
+    }
+  }
+  h+=`</div></div>`;
+  h+=`<div class="sec"><details><summary>raw machine state</summary><div class="facts">${esc(s.atoms.map(show).join('\n'))}</div></details></div>`;
+  d.innerHTML=h;
+
+  d.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ui[p].tab=b.dataset.tab;render()});
+  d.querySelectorAll('[data-ans]').forEach(b=>b.onclick=()=>{b.disabled=true;act(p,+b.dataset.id,JSON.parse(b.dataset.path),b.dataset.ans)});
+  d.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const a=b.dataset.act; const M=m?m.name:null, K=m?m.keeper:null;
+    let prop=null;
+    if(a==='establish') prop=S('establish',p);
+    if(a==='acquaint'){const q=val(`${p}-acq`); if(q) prop=S('acquaint',p,q)}
+    if(a==='open'){const n=tval(`${p}-open`); if(n) prop=S('open',p,sp(n,p))}
+    if(a==='admit'){const q=val(`${p}-adm`); if(q) prop=S('admit',p,q,M)}
+    if(a==='list'){const n=tval(`${p}-list`); if(n) prop=S('list',p,sp(n,p))}
+    if(a==='offer'){const x=val(`${p}-off`); if(x) prop=S('offer',p,K,x,M)}
+    if(a==='want'){const n=tval(`${p}-want`); if(n) prop=S('want',p,K,sp(n,p),M)}
+    if(a==='swap'){const x=val(`${p}-give`), y=val(`${p}-get`); if(x&&y) prop=S('swap',p,y[0],x,y[1])}
+    if(a==='withdraw'){const w=val(`${p}-wd`); if(w) prop=S(w[0]==='offer'?'withdraw_offer':'withdraw_want',K,p,w[1],M)}
+    if(prop){ b.disabled=true; for(const f of ['open','list','want']) if(a===f) delete draft[`${p}-${f}`]; propose(p,prop); }
+  });
+  return d;
+}
+
+// Typing survives a re-render: drafts are kept by field id, and the focused
+// field and its caret are restored after each render.
+const draft={};
+document.addEventListener('input',e=>{if(e.target.id) draft[e.target.id]=e.target.value});
+function restoreDrafts(){for(const [id,v] of Object.entries(draft)){const e=document.getElementById(id);if(e&&e.tagName==='INPUT')e.value=v}}
+async function poll(){
+  for(;;){
+    try{
+      const r=await fetch(api('/api/state?since='+VER)); const st=await r.json();
+      if(st.version!==VER){ ST=st; VER=st.version; render(); }
+    }catch(e){ document.getElementById('status').textContent='reconnecting…'; await new Promise(r=>setTimeout(r,2000)); }
+  }
+}
+document.getElementById('reset').onclick=async()=>{ if(confirm('Start a fresh world? Everyone loses everything.')){ document.getElementById('status').textContent='resetting…'; await fetch(api('/api/reset'),{method:'POST'}); VER=-1; } };
+poll();
+</script>
+</body>
+</html>

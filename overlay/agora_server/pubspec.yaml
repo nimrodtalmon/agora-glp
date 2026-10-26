@@ -1,0 +1,8 @@
+name: agora_server
+description: Live web server for the AGORA barter platform compiled by the GLP cascade.
+publish_to: none
+environment:
+  sdk: ^3.9.4
+dependencies:
+  glp_runtime:
+    path: ../glp_runtime

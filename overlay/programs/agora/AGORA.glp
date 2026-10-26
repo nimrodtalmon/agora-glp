@@ -1,0 +1,139 @@
+%% ---------------------------------------------------------------------------
+%% AGORA.glp --- Grassroots Barter, an experimental contract (Nimrod Talmon
+%% with Claude, 2026-10-26), in the term form programs/gsc reads (its README,
+%% "Writing a contract").  The clauses are in AGORA.txt beside this file;
+%% AGORA extends GKK, so the term holds GKK's three schemas.
+%%
+%% A role is rs(Guard, Add, Del, Keep, Forb).  A market is named by its keeper,
+%% the role a, and n: its community name <a>.n, as GSN names a group.  x, an
+%% item or a want, and n, a market's name, are speech-act variables, so an item
+%% names its maker.  o, the poster of an offer or a want, is an agent variable.
+%% The keeper relays posts to every member as GSN's leader does; a member who
+%% receives a post comes to know its poster, as GC's receiver of a coin comes
+%% to know its issuer.  Withdrawal takes the listed role
+%% a[sent_offer(*, x, o, n)], every member the keeper delivered the post to,
+%% as GSN's close takes a[listed(*, n)].
+%% ---------------------------------------------------------------------------
+
+NameTerm  ::= own(Integer) ; own_var(Constant) ; nvar(Constant)
+            ; ext(NameTerm, Constant).
+Arg       ::= role(Integer) ; pvar(Constant) ; svar(Constant) ; nterm(NameTerm)
+            ; sgn(Constant, Integer).
+Args      ::= [] ; [Arg | Args].
+Atom      ::= atom(Constant, Args).
+Atoms     ::= [] ; [Atom | Atoms].
+Guard     ::= guarded ; unguarded ; guarded_at(Constant).
+RoleKind  ::= seated(NameTerm, Constant) ; constituent(NameTerm, Constant)
+            ; listed(Integer, Constant, Args).
+RoleSpec  ::= rs(Guard, Atoms, Atoms, Atoms, Atoms)
+            ; crs(RoleKind, Guard, Atoms, Atoms, Atoms, Atoms).
+RoleSpecs ::= [] ; [RoleSpec | RoleSpecs].
+Reach     ::= reach(NameTerm, Constant, NameTerm).
+Reaches   ::= [] ; [Reach | Reaches].
+Names     ::= [] ; [Constant | Names].
+Schema    ::= schema(Constant, Names, Args, RoleSpecs) ; cschema(Constant, Names, Args, Reaches, RoleSpecs).
+Contract  ::= [] ; [Schema | Contract].
+Preds     ::= [] ; [Constant | Preds].
+Declared  ::= Contract ; reflexive(Preds, Contract).
+
+%% contract_named(agora, C): the contract, AGORA.
+procedure contract_named(Constant?, Declared).
+contract_named(agora,
+   [schema(establish, ['Alice'], [],
+       [rs(guarded, [atom(identity, [])], [], [], [atom(identity, [])])]),
+    schema(acquaint, ['Alice', 'Bob'], [],
+       [rs(guarded, [atom(knows, [role(2)])], [], [atom(identity, [])], []),
+        rs(guarded, [atom(knows, [role(1)])], [], [atom(identity, [])], [])]),
+    schema(introduce, ['Alice', 'Bob'], [pvar(c)],
+       [rs(guarded, [], [], [atom(identity, []), atom(knows, [role(2)]), atom(knows, [pvar(c)])], []),
+        rs(guarded, [atom(knows, [pvar(c)])], [], [atom(identity, []), atom(knows, [role(1)])], [])]),
+    %% AGORA:1, Market.
+    schema(open, ['Alice'], [svar(n)],
+       [rs(guarded, [atom(member, [nterm(ext(own(1), n))]),
+                     atom(listed, [role(1), svar(n)])], [], [atom(identity, [])],
+                    [atom(member, [nterm(ext(own(1), n))])])]),
+    %% AGORA:2, Joining.
+    schema(admit, ['Alice', 'Bob'], [svar(n)],
+       [rs(guarded, [atom(listed, [role(2), svar(n)])], [],
+                    [atom(identity, []), atom(member, [nterm(ext(own(1), n))]), atom(knows, [role(2)])],
+                    [atom(listed, [role(2), svar(n)])]),
+        rs(guarded, [atom(member, [nterm(ext(own(1), n))])], [],
+                    [atom(identity, [])],
+                    [atom(member, [nterm(ext(own(1), n))])])]),
+    %% AGORA:3, Listing.
+    schema(list, ['Alice'], [svar(x)],
+       [rs(guarded, [atom(item, [svar(x)]), atom(made, [svar(x)])], [],
+                    [atom(identity, [])], [atom(made, [svar(x)])])]),
+    %% AGORA:4, Offering: Bob posts, the keeper Alice records, and delivers.
+    schema(offer, ['Bob', 'Alice'], [svar(x), svar(n)],
+       [rs(guarded,   [], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(2), n))]), atom(item, [svar(x)])], []),
+        rs(unguarded, [atom(offered, [svar(x), role(1), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(2), n))]),
+                       atom(listed, [role(1), svar(n)]), atom(knows, [role(1)])],
+                      [atom(offered, [svar(x), role(1), svar(n)])])]),
+    %% Delivery to a member who does not yet know the poster, who comes to know them,
+    schema(deliver_offer, ['Alice', 'Bob'], [svar(x), pvar(o), svar(n)],
+       [rs(unguarded, [atom(sent_offer, [role(2), svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]),
+                       atom(offered, [svar(x), pvar(o), svar(n)]),
+                       atom(listed, [role(2), svar(n)]), atom(knows, [pvar(o)])],
+                      [atom(sent_offer, [role(2), svar(x), pvar(o), svar(n)])]),
+        rs(unguarded, [atom(wall_offer, [svar(x), pvar(o), svar(n)]), atom(knows, [pvar(o)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))])],
+                      [atom(knows, [pvar(o)])])]),
+    %% and to a member who already knows them.
+    schema(deliver_offer_known, ['Alice', 'Bob'], [svar(x), pvar(o), svar(n)],
+       [rs(unguarded, [atom(sent_offer, [role(2), svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]),
+                       atom(offered, [svar(x), pvar(o), svar(n)]),
+                       atom(listed, [role(2), svar(n)]), atom(knows, [pvar(o)])],
+                      [atom(sent_offer, [role(2), svar(x), pvar(o), svar(n)])]),
+        rs(unguarded, [atom(wall_offer, [svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]), atom(knows, [pvar(o)])],
+                      [])]),
+    %% AGORA:5, Wanting: as Offering, with no item owned.
+    schema(want, ['Bob', 'Alice'], [svar(x), svar(n)],
+       [rs(guarded,   [], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(2), n))])], []),
+        rs(unguarded, [atom(wanted, [svar(x), role(1), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(2), n))]),
+                       atom(listed, [role(1), svar(n)]), atom(knows, [role(1)])],
+                      [atom(wanted, [svar(x), role(1), svar(n)])])]),
+    schema(deliver_want, ['Alice', 'Bob'], [svar(x), pvar(o), svar(n)],
+       [rs(unguarded, [atom(sent_want, [role(2), svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]),
+                       atom(wanted, [svar(x), pvar(o), svar(n)]),
+                       atom(listed, [role(2), svar(n)]), atom(knows, [pvar(o)])],
+                      [atom(sent_want, [role(2), svar(x), pvar(o), svar(n)])]),
+        rs(unguarded, [atom(wall_want, [svar(x), pvar(o), svar(n)]), atom(knows, [pvar(o)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))])],
+                      [atom(knows, [pvar(o)])])]),
+    schema(deliver_want_known, ['Alice', 'Bob'], [svar(x), pvar(o), svar(n)],
+       [rs(unguarded, [atom(sent_want, [role(2), svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]),
+                       atom(wanted, [svar(x), pvar(o), svar(n)]),
+                       atom(listed, [role(2), svar(n)]), atom(knows, [pvar(o)])],
+                      [atom(sent_want, [role(2), svar(x), pvar(o), svar(n)])]),
+        rs(unguarded, [atom(wall_want, [svar(x), pvar(o), svar(n)])], [],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))]), atom(knows, [pvar(o)])],
+                      [])]),
+    %% AGORA:6, Swap: Alice gives x and gets y; Bob gives y and gets x.
+    schema(swap, ['Alice', 'Bob'], [svar(x), svar(y)],
+       [rs(guarded, [atom(item, [svar(y)])], [atom(item, [svar(x)])],
+                    [atom(identity, []), atom(knows, [role(2)])], []),
+        rs(guarded, [atom(item, [svar(x)])], [atom(item, [svar(y)])],
+                    [atom(identity, [])], [])]),
+    %% AGORA:7, Withdrawal, of an offer and of a want: the keeper first, the listed role's base.
+    cschema(withdraw_offer, ['Alice', 'Bob', 'Alice'], [svar(x), svar(n)], [],
+       [rs(unguarded, [], [atom(offered, [svar(x), role(2), svar(n)])],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))])], []),
+        rs(guarded,   [], [], [atom(identity, []), atom(member, [nterm(ext(own(1), n))])], []),
+        crs(listed(1, sent_offer, [svar(x), role(2), svar(n)]), unguarded,
+            [], [atom(wall_offer, [svar(x), role(2), svar(n)])], [atom(identity, [])], [])]),
+    cschema(withdraw_want, ['Alice', 'Bob', 'Alice'], [svar(x), svar(n)], [],
+       [rs(unguarded, [], [atom(wanted, [svar(x), role(2), svar(n)])],
+                      [atom(identity, []), atom(member, [nterm(ext(own(1), n))])], []),
+        rs(guarded,   [], [], [atom(identity, []), atom(member, [nterm(ext(own(1), n))])], []),
+        crs(listed(1, sent_want, [svar(x), role(2), svar(n)]), unguarded,
+            [], [atom(wall_want, [svar(x), role(2), svar(n)])], [atom(identity, [])], [])])]).

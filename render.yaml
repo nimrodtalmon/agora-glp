@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: agora-glp
+    runtime: docker
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: APP_KEY
+        sync: false

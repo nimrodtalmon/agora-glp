@@ -1,0 +1,126 @@
+%% ---------------------------------------------------------------------------
+%% The play of the canonical CVA platform of AGORA, Grassroots Barter
+%% (programs/agora/AGORA.glp), platform.vglp, as cascade.sh prints it.
+%%
+%% play_market: each person establishes their identity; alice comes to know
+%% carol and bob, opens the market, and admits carol, then bob, each asked and
+%% answering yes.  bob lists a bike and offers it; carol lists jam and posts
+%% that she wants a bike.  alice's machine delivers each post to every member,
+%% and carol, seeing bob's bike, comes to know bob.  carol proposes jam for the
+%% bike; bob answers yes.  bob, now holding the jam, withdraws his offer, and it
+%% leaves the wall of every member it was delivered to.
+%%
+%% The types of platform.vglp, written again for the declarations of the
+%% procedures imported from its compiled module.
+%% ---------------------------------------------------------------------------
+
+Speech   ::= speech(Utterance, Peer).
+Utterance ::= utterance(String) ; Speech.
+Class    ::= establish(Peer) ; acquaint(Peer, Peer) ; introduce(Peer, Peer, Peer)
+           ; open(Peer, Speech) ; admit(Peer, Peer, Speech) ; list(Peer, Speech)
+           ; offer(Peer, Peer, Speech, Speech)
+           ; deliver_offer(Peer, Peer, Speech, Peer, Speech)
+           ; deliver_offer_known(Peer, Peer, Speech, Peer, Speech)
+           ; want(Peer, Peer, Speech, Speech)
+           ; deliver_want(Peer, Peer, Speech, Peer, Speech)
+           ; deliver_want_known(Peer, Peer, Speech, Peer, Speech)
+           ; swap(Peer, Peer, Speech, Speech)
+           ; withdraw_offer(Peer, Peer, List(Peer), Speech, Speech)
+           ; withdraw_want(Peer, Peer, List(Peer), Speech, Speech).
+Proposal ::= establish(Peer) ; acquaint(Peer, Peer) ; introduce(Peer, Peer, Peer)
+           ; open(Peer, Speech) ; admit(Peer, Peer, Speech) ; list(Peer, Speech)
+           ; offer(Peer, Peer, Speech, Speech) ; want(Peer, Peer, Speech, Speech)
+           ; swap(Peer, Peer, Speech, Speech)
+           ; withdraw_offer(Peer, Peer, Speech, Speech)
+           ; withdraw_want(Peer, Peer, Speech, Speech).
+Request  ::= propose(Proposal).
+YesNo    ::= yes ; no.
+Reason   ::= declined ; unable ; unable(List(Atom), List(Atom)).
+Vote     ::= yes ; no(Reason).
+Decision ::= commit ; abort(Peer, Reason) ; yield.
+Rho      ::= one(Class) ; rho(Proposal).
+Names    ::= none ; request(Rho, Integer).
+Attempt  ::= attempt(Peer, Integer, Integer, Class, Names).
+Cargo    ::= start(Attempt) ; vote(Attempt, Vote) ; outcome(Attempt, Decision)
+           ; yield(Attempt) ; request(Rho, Integer).
+Content  ::= hello(Peer, Proposal) ; ihello(Peer) ; intro(Peer, Peer) ; cargo(Peer, Cargo).
+Net      ::= msg(Peer, Content).
+CName    ::= community(Peer) ; dot(CName, Speech).
+Atom     ::= identity ; knows(Peer) ; member(CName) ; listed(Peer, Speech)
+           ; item(Speech) ; made(Speech) ; offered(Speech, Peer, Speech)
+           ; sent_offer(Peer, Speech, Peer, Speech) ; wall_offer(Speech, Peer, Speech)
+           ; wanted(Speech, Peer, Speech) ; sent_want(Peer, Speech, Peer, Speech)
+           ; wall_want(Speech, Peer, Speech).
+Approved ::= Proposal.
+Output   ::= view(List(Atom), List(Key), List(Approved), List(Tab)) ; refused(Approved, Key, Reason).
+Tab      ::= tab(String, Constant) ; tab(String, Constant, Constant).
+Asking   ::= Attempt ; hello(Peer, Proposal).
+Approval ::= approval(Asking, List(Word), YesNo?).
+Word     ::= text(String) ; person(Peer) ; named(String, Peer) ; valued(String, Integer).
+Menu     ::= menu(Key, List(Key), Request?).
+Question ::= menu_w(Menu) ; approval_w(Approval).
+Drawn    ::= menu_w(_) ; approval_w(_) ; output(List(Output)) ; Request ; YesNo.
+Ask(Q)   ::= ask(Constant, Q).
+
+imported procedure platform#agent(Peer?, Stream(Net)?, Stream(Net),
+    Stream(Output), Stream(Ask(Question))).
+imported procedure platform#dispatch(Stream(Ask(Question))?,
+    PersonChannel(Drawn)?, Channel(Stream(_), Stream(Output))).
+
+exported procedure play_market(Stream(_), Stream(_), Stream(_), Stream(Sent(Cargo))).
+play_market(LA?, LB?, LC?, N?) :-
+    trio([own([A1], propose(establish(A1?))), wait(holds(identity)),
+          own([A2], propose(acquaint(A2?, carol))), wait(holds(knows(carol))),
+          own([A3], propose(acquaint(A3?, bob))), wait(holds(knows(bob))),
+          own([A4, A5], propose(open(A4?, speech(utterance(market), A5?)))),
+          wait(holds(member(dot(community(alice), speech(utterance(market), alice))))),
+          own([A6, A7], propose(admit(A6?, carol, speech(utterance(market), A7?)))),
+          wait(holds(listed(carol, speech(utterance(market), alice)))),
+          own([A8, A9], propose(admit(A8?, bob, speech(utterance(market), A9?)))),
+          wait(holds(listed(bob, speech(utterance(market), alice))))],
+         [own([B1], propose(establish(B1?))), wait(holds(identity)),
+          approval(acquaint(alice, bob), yes),
+          approval(admit(alice, bob, speech(utterance(market), alice)), yes),
+          wait(holds(member(dot(community(alice), speech(utterance(market), alice))))),
+          own([B2, B3], propose(list(B2?, speech(utterance(bike), B3?)))),
+          wait(holds(item(speech(utterance(bike), bob)))),
+          own([B4, B5], propose(offer(B4?, alice, speech(utterance(bike), B5?), speech(utterance(market), alice)))),
+          wait(holds(wall_offer(speech(utterance(bike), bob), bob, speech(utterance(market), alice)))),
+          approval(swap(carol, bob, speech(utterance(jam), carol), speech(utterance(bike), bob)), yes),
+          wait(holds(item(speech(utterance(jam), carol)))),
+          own([B6, B7], propose(withdraw_offer(alice, B6?, speech(utterance(bike), B7?), speech(utterance(market), alice)))),
+          wait(lacks(wall_offer(speech(utterance(bike), bob), bob, speech(utterance(market), alice))))],
+         [own([C1], propose(establish(C1?))), wait(holds(identity)),
+          approval(acquaint(alice, carol), yes),
+          approval(admit(alice, carol, speech(utterance(market), alice)), yes),
+          wait(holds(member(dot(community(alice), speech(utterance(market), alice))))),
+          own([C2, C3], propose(list(C2?, speech(utterance(jam), C3?)))),
+          wait(holds(item(speech(utterance(jam), carol)))),
+          own([C4, C5], propose(want(C4?, alice, speech(utterance(a_bike), C5?), speech(utterance(market), alice)))),
+          wait(holds(wall_want(speech(utterance(a_bike), carol), carol, speech(utterance(market), alice)))),
+          wait(holds(wall_offer(speech(utterance(bike), bob), bob, speech(utterance(market), alice)))),
+          own([C6, C7], propose(swap(C6?, bob, speech(utterance(jam), C7?), speech(utterance(bike), bob)))),
+          wait(holds(item(speech(utterance(bike), bob)))),
+          wait(lacks(wall_offer(speech(utterance(bike), bob), bob, speech(utterance(market), alice))))],
+         LA, LB, LC, N).
+
+%% alice, bob and carol, each with its dispatcher and scripted person, their
+%% networks joined.
+procedure trio(Steps(Drawn)?, Steps(Drawn)?, Steps(Drawn)?, Stream(_), Stream(_), Stream(_),
+    Stream(Sent(Cargo))).
+trio(SA, SB, SC, LA?, LB?, LC?, N?) :-
+    platform # agent(alice, InA?, OutA, TA, AsA),
+    platform # dispatch(AsA?, ch(GA?, DA), MA),
+    to_person(MA?, TA?),
+    person(DA?, GA, ps(nosess, [], [], SA?), LA),
+    platform # agent(bob, InB?, OutB, TB, AsB),
+    platform # dispatch(AsB?, ch(GB?, DB), MB),
+    to_person(MB?, TB?),
+    person(DB?, GB, ps(nosess, [], [], SB?), LB),
+    platform # agent(carol, InC?, OutC, TC, AsC),
+    platform # dispatch(AsC?, ch(GC?, DC), MC),
+    to_person(MC?, TC?),
+    person(DC?, GC, ps(nosess, [], [], SC?), LC),
+    merge(OutA?, OutB?, Net1),
+    merge(Net1?, OutC?, Net),
+    route3(Net?, alice, InA, bob, InB, carol, InC, N).

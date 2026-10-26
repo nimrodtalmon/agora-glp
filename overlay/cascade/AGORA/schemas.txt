@@ -1,0 +1,58 @@
+establish(Alice?) :
+    at Alice: not identity, +identity
+
+acquaint(Alice?, Bob?) :
+    at Alice: identity, +knows(Bob)
+    at Bob: identity, +knows(Alice)
+
+introduce(Alice?, Bob?; c) :
+    at Alice: identity, knows(Bob), knows(c)
+    at Bob: identity, knows(Alice), +knows(c)
+
+open(Alice?; n) :
+    at Alice: identity, not member(<Alice>.n), +member(<Alice>.n), +listed(Alice, n)
+
+admit(Alice?, Bob?; n) :
+    at Alice: identity, member(<Alice>.n), knows(Bob), not listed(Bob, n), +listed(Bob, n)
+    at Bob: identity, not member(<Alice>.n), +member(<Alice>.n)
+
+list(Alice?; x) :
+    at Alice: identity, not made(x), +item(x), +made(x)
+
+offer(Bob?, Alice; x, n) :
+    at Bob: identity, member(<Alice>.n), item(x)
+    at Alice: identity, member(<Alice>.n), listed(Bob, n), knows(Bob), not offered(x, Bob, n), +offered(x, Bob, n)
+
+deliver_offer(Alice, Bob; x, o, n) :
+    at Alice: identity, member(<Alice>.n), offered(x, o, n), listed(Bob, n), knows(o), not sent_offer(Bob, x, o, n), +sent_offer(Bob, x, o, n)
+    at Bob: identity, member(<Alice>.n), not knows(o), +wall_offer(x, o, n), +knows(o)
+
+deliver_offer_known(Alice, Bob; x, o, n) :
+    at Alice: identity, member(<Alice>.n), offered(x, o, n), listed(Bob, n), knows(o), not sent_offer(Bob, x, o, n), +sent_offer(Bob, x, o, n)
+    at Bob: identity, member(<Alice>.n), knows(o), +wall_offer(x, o, n)
+
+want(Bob?, Alice; x, n) :
+    at Bob: identity, member(<Alice>.n)
+    at Alice: identity, member(<Alice>.n), listed(Bob, n), knows(Bob), not wanted(x, Bob, n), +wanted(x, Bob, n)
+
+deliver_want(Alice, Bob; x, o, n) :
+    at Alice: identity, member(<Alice>.n), wanted(x, o, n), listed(Bob, n), knows(o), not sent_want(Bob, x, o, n), +sent_want(Bob, x, o, n)
+    at Bob: identity, member(<Alice>.n), not knows(o), +wall_want(x, o, n), +knows(o)
+
+deliver_want_known(Alice, Bob; x, o, n) :
+    at Alice: identity, member(<Alice>.n), wanted(x, o, n), listed(Bob, n), knows(o), not sent_want(Bob, x, o, n), +sent_want(Bob, x, o, n)
+    at Bob: identity, member(<Alice>.n), knows(o), +wall_want(x, o, n)
+
+swap(Alice?, Bob?; x, y) :
+    at Alice: identity, knows(Bob), +item(y), -item(x)
+    at Bob: identity, +item(x), -item(y)
+
+withdraw_offer(Alice, Bob?, Alice[sent_offer(*, x, Bob, n)]; x, n) :
+    at Alice: identity, member(<Alice>.n), -offered(x, Bob, n)
+    at Bob: identity, member(<Alice>.n)
+    at Alice[sent_offer(*, x, Bob, n)]: identity, -wall_offer(x, Bob, n)
+
+withdraw_want(Alice, Bob?, Alice[sent_want(*, x, Bob, n)]; x, n) :
+    at Alice: identity, member(<Alice>.n), -wanted(x, Bob, n)
+    at Bob: identity, member(<Alice>.n)
+    at Alice[sent_want(*, x, Bob, n)]: identity, -wall_want(x, Bob, n)

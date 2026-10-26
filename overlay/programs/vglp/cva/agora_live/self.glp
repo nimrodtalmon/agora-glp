@@ -1,0 +1,111 @@
+%% ---------------------------------------------------------------------------
+%% The live harness of AGORA's canonical CVA platform (platform.vglp, as
+%% cascade.sh prints it): four agents, alice, bob, carol and dave, in one heap,
+%% their networks joined, each person LIVE --- the host (the AGORA server) is
+%% every person.  The host's acts arrive on the person stream as
+%% in(Person, input(Id, P, R)), each routed to that person's channel; what each
+%% dispatcher draws leaves by send_to_user/1 as d(Person, Draw), and each cargo
+%% the network carries as net(Sent).
+%% ---------------------------------------------------------------------------
+
+Speech   ::= speech(Utterance, Peer).
+Utterance ::= utterance(String) ; Speech.
+Class    ::= establish(Peer) ; acquaint(Peer, Peer) ; introduce(Peer, Peer, Peer)
+           ; open(Peer, Speech) ; admit(Peer, Peer, Speech) ; list(Peer, Speech)
+           ; offer(Peer, Peer, Speech, Speech)
+           ; deliver_offer(Peer, Peer, Speech, Peer, Speech)
+           ; deliver_offer_known(Peer, Peer, Speech, Peer, Speech)
+           ; want(Peer, Peer, Speech, Speech)
+           ; deliver_want(Peer, Peer, Speech, Peer, Speech)
+           ; deliver_want_known(Peer, Peer, Speech, Peer, Speech)
+           ; swap(Peer, Peer, Speech, Speech)
+           ; withdraw_offer(Peer, Peer, List(Peer), Speech, Speech)
+           ; withdraw_want(Peer, Peer, List(Peer), Speech, Speech).
+Proposal ::= establish(Peer) ; acquaint(Peer, Peer) ; introduce(Peer, Peer, Peer)
+           ; open(Peer, Speech) ; admit(Peer, Peer, Speech) ; list(Peer, Speech)
+           ; offer(Peer, Peer, Speech, Speech) ; want(Peer, Peer, Speech, Speech)
+           ; swap(Peer, Peer, Speech, Speech)
+           ; withdraw_offer(Peer, Peer, Speech, Speech)
+           ; withdraw_want(Peer, Peer, Speech, Speech).
+Request  ::= propose(Proposal).
+YesNo    ::= yes ; no.
+Reason   ::= declined ; unable ; unable(List(Atom), List(Atom)).
+Vote     ::= yes ; no(Reason).
+Decision ::= commit ; abort(Peer, Reason) ; yield.
+Rho      ::= one(Class) ; rho(Proposal).
+Names    ::= none ; request(Rho, Integer).
+Attempt  ::= attempt(Peer, Integer, Integer, Class, Names).
+Cargo    ::= start(Attempt) ; vote(Attempt, Vote) ; outcome(Attempt, Decision)
+           ; yield(Attempt) ; request(Rho, Integer).
+Content  ::= hello(Peer, Proposal) ; ihello(Peer) ; intro(Peer, Peer) ; cargo(Peer, Cargo).
+Net      ::= msg(Peer, Content).
+CName    ::= community(Peer) ; dot(CName, Speech).
+Atom     ::= identity ; knows(Peer) ; member(CName) ; listed(Peer, Speech)
+           ; item(Speech) ; made(Speech) ; offered(Speech, Peer, Speech)
+           ; sent_offer(Peer, Speech, Peer, Speech) ; wall_offer(Speech, Peer, Speech)
+           ; wanted(Speech, Peer, Speech) ; sent_want(Peer, Speech, Peer, Speech)
+           ; wall_want(Speech, Peer, Speech).
+Approved ::= Proposal.
+Output   ::= view(List(Atom), List(Key), List(Approved), List(Tab)) ; refused(Approved, Key, Reason).
+Tab      ::= tab(String, Constant) ; tab(String, Constant, Constant).
+Asking   ::= Attempt ; hello(Peer, Proposal).
+Approval ::= approval(Asking, List(Word), YesNo?).
+Word     ::= text(String) ; person(Peer) ; named(String, Peer) ; valued(String, Integer).
+Menu     ::= menu(Key, List(Key), Request?).
+Question ::= menu_w(Menu) ; approval_w(Approval).
+Drawn    ::= menu_w(_) ; approval_w(_) ; output(List(Output)) ; Request ; YesNo.
+Ask(Q)   ::= ask(Constant, Q).
+
+imported procedure platform#agent(Peer?, Stream(Net)?, Stream(Net),
+    Stream(Output), Stream(Ask(Question))).
+imported procedure platform#dispatch(Stream(Ask(Question))?,
+    PersonChannel(Drawn)?, Channel(Stream(_), Stream(Output))).
+
+exported procedure agora_ui(Key?, HostIn?, Stream(_)?).
+agora_ui(_, Ins, _) :-
+    split4(Ins?, GA, GB, GC, GD),
+    platform # agent(alice, InA?, OutA, TA, AsA),
+    platform # dispatch(AsA?, ch(GA?, DA), MA),
+    to_person(MA?, TA?),
+    tag(alice, DA?, SA),
+    platform # agent(bob, InB?, OutB, TB, AsB),
+    platform # dispatch(AsB?, ch(GB?, DB), MB),
+    to_person(MB?, TB?),
+    tag(bob, DB?, SB),
+    platform # agent(carol, InC?, OutC, TC, AsC),
+    platform # dispatch(AsC?, ch(GC?, DC), MC),
+    to_person(MC?, TC?),
+    tag(carol, DC?, SC),
+    platform # agent(dave, InD?, OutD, TD, AsD),
+    platform # dispatch(AsD?, ch(GD?, DD), MD),
+    to_person(MD?, TD?),
+    tag(dave, DD?, SD),
+    merge(OutA?, OutB?, Net1),
+    merge(OutC?, OutD?, Net2),
+    merge(Net1?, Net2?, Net),
+    route4(Net?, alice, InA, bob, InB, carol, InC, dave, InD, N),
+    tag_net(N?, SN),
+    merge(SA?, SB?, S1),
+    merge(SC?, SD?, S2),
+    merge(S1?, S2?, S3),
+    merge(S3?, SN?, S),
+    send_to_user(S?).
+
+%% The host's acts, each to its person's channel.
+HostIn ::= [_ | HostIn].
+procedure split4(HostIn?, PersonIn(Drawn), PersonIn(Drawn), PersonIn(Drawn), PersonIn(Drawn)).
+split4([in(alice, G)|Ins], [G?|A?], B?, C?, D?) :- split4(Ins?, A, B, C, D).
+split4([in(bob, G)|Ins], A?, [G?|B?], C?, D?) :- split4(Ins?, A, B, C, D).
+split4([in(carol, G)|Ins], A?, B?, [G?|C?], D?) :- split4(Ins?, A, B, C, D).
+split4([in(dave, G)|Ins], A?, B?, C?, [G?|D?]) :- split4(Ins?, A, B, C, D).
+split4([_|Ins], A?, B?, C?, D?) :- otherwise | split4(Ins?, A, B, C, D).
+
+%% What a dispatcher draws, tagged with its person.
+procedure tag(Peer?, Stream(_)?, Stream(_)).
+tag(N, [X|Xs], [d(N?, X?)|Ts?]) :- ground(N?) | tag(N?, Xs?, Ts).
+tag(_, [], []).
+
+%% What the network carries, tagged.
+procedure tag_net(Stream(_)?, Stream(_)).
+tag_net([X|Xs], [net(X?)|Ts?]) :- tag_net(Xs?, Ts).
+tag_net([], []).
