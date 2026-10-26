@@ -45,7 +45,11 @@ Each acting step runs the real platform in the GLP engine, which is CPU-heavy
 plan; the Free plan works but is very slow, and it sleeps when idle, which
 resets the world.
 
-## Run locally (Windows, Mac or Linux)
+## Run locally on Windows, without Docker
+
+Install [Git](https://git-scm.com/download/win) and the [Dart SDK](https://dart.dev/get-dart), then double-click `run_windows.bat` (or run it from cmd) and open <http://localhost:8080>.
+
+## Run locally with Docker (Windows, Mac or Linux)
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then in this folder:
 
